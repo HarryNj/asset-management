@@ -1,8 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Asset Management System</title>
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#eef7f0;}
+button{background:#2e7d32;color:white;border:none;padding:8px 12px;cursor:pointer;border-radius:4px;}
+button:hover{background:#1b5e20;}
+input,select{padding:8px;margin:4px;}
+.home{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;background:linear-gradient(135deg,#1b5e20,#66bb6a);animation:fade 1.5s;}
+@keyframes fade{from{opacity:0;transform:translateY(30px);}to{opacity:1;}}
+.home h1{font-size:40px;}
+.login{display:none;text-align:center;margin-top:100px;}
+.header{display:none;background:linear-gradient(90deg,#1b5e20,#43a047);color:white;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;}
+.dashboard{display:none;padding:20px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px;}
+.card{background:white;padding:15px;border-left:6px solid #2e7d32;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+table{width:100%;border-collapse:collapse;background:white;margin-top:15px;}
+th,td{border:1px solid #ccc;padding:6px;}
+th{background:#2e7d32;color:white;}
+img{width:50px;}
+.formbox{background:white;padding:10px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="home" id="home">
+<h1>Enterprise Asset Management</h1>
+<p>Professional Company Asset Tracking System</p>
+<button onclick="openLogin()">Enter System</button>
+</div>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+<h2>Login</h2>
+<input id="user" placeholder="Email"><br>
+<input type="password" id="pass" placeholder="Password"><br>
+<button onclick="login()">Login</button>
+<button onclick="register()">Register</button>
+</div>
+
+<!-- HEADER -->
+<div class="header" id="header">
+<div>Enterprise Asset Management</div>
+<div id="roleDisplay"></div>
+<button onclick="logout()">Logout</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+<div class="cards">
+<div class="card"><h3>Total Assets</h3><h2 id="totalAssets">0</h2></div>
+<div class="card"><h3>Good</h3><h2 id="goodAssets">0</h2></div>
+<div class="card"><h3>Maintenance</h3><h2 id="maintAssets">0</h2></div>
+<div class="card"><h3>Damaged</h3><h2 id="badAssets">0</h2></div>
+</div>
+
+<div class="formbox">
+<h3>Register Asset</h3>
+<input id="assetName" placeholder="Asset Name">
+<input id="assetCode" placeholder="Asset Code">
+<select id="department">
+<option>Finance</option><option>Administration</option><option>ICT</option><option>Operations</option><option>Field Office</option>
+</select>
+<select id="condition">
+<option>Good</option><option>Maintenance</option><option>Damaged</option>
+</select>
+<input type="date" id="handoverDate">
+<input id="handoverPerson" placeholder="Handed By">
+<input id="phone" placeholder="Phone">
+<select id="district">
+<option>Lusaka</option><option>Chongwe</option><option>Kafue</option><option>Chilanga</option><option>Luangwa</option>
+<option>Chipata</option><option>Katete</option><option>Petauke</option>
+<option>Kasama</option><option>Mbala</option>
+<option>Ndola</option><option>Kitwe</option>
+<option>Kabwe</option><option>Kapiri Mposhi</option>
+<option>Solwezi</option><option>Mongu</option>
+<option>Livingstone</option><option>Choma</option>
+</select>
+<input id="enteredBy" placeholder="Entered By"><br>
+<button onclick="addAsset()">Save</button>
+<button onclick="exportExcel()">Excel</button>
+<button onclick="exportCSV()">CSV</button>
+</div>
+
+<input id="search" placeholder="Search..." onkeyup="searchAsset()">
+
+<table id="assetTable">
+<tr>
+<th>ID</th><th>Name</th><th>Code</th><th>Dept</th><th>Cond</th><th>Date</th>
+<th>By</th><th>Phone</th><th>District</th><th>Entered</th><th>QR</th><th>Action</th>
+</tr>
+</table>
+</div>
+
+<script>
+// Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyDWP5Nnw1tKP6bSArTlGe55y4v7gv_YSPE",
-  authDomain: "eff-asset.firebaseapp.com",
-  projectId: "eff-asset",
-  storageBucket: "eff-asset.firebasestorage.app",
-  messagingSenderId: "908941607241",
-  appId: "1:908941607241:web:11448702e58453bb48da98"
+    apiKey: "AIzaSyDWP5Nnw1tKP6bSArTlGe55y4v7gv_YSPE",
+    authDomain: "eff-asset.firebaseapp.com",
+    projectId: "eff-asset",
+    storageBucket: "eff-asset.firebasestorage.app",
+    messagingSenderId: "908941607241",
+    appId: "1:908941607241:web:11448702e58453bb48da98"
 };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+// Elements
+const home = document.getElementById("home");
+const loginDiv = document.getElementById("login");
+const dashboard = document.getElementById("dashboard");
+const header = document.getElementById("header");
+const roleDisplay = document.getElementById("roleDisplay");
+const assetTable = document.getElementById("assetTable");
+
+// Open login
+function openLogin(){
+    home.style.display="none";
+    loginDiv.style.display="block";
+}
+
+// Register user
+function register(){
+    let u = user.value;
+    let p = pass.value;
+    if(!u || !p){alert("Enter email and password"); return;}
+    auth.createUserWithEmailAndPassword(u,p)
+        .then(() => alert("Registered! You can login now."))
+        .catch(err => alert("Error: "+err.message));
+}
+
+// Login
+function login(){
+    let u = user.value;
+    let p = pass.value;
+    if(!u || !p){alert("Enter email and password"); return;}
+    auth.signInWithEmailAndPassword(u,p)
+        .then(() => {
+            loginDiv.style.display="none";
+            header.style.display="flex";
+            dashboard.style.display="block";
+            roleDisplay.innerText = u;
+            loadAssets();
+        })
+        .catch(err => alert("Login failed: "+err.message));
+}
+
+// Logout
+function logout(){
+    auth.signOut().then(() => {
+        dashboard.style.display="none";
+        header.style.display="none";
+        loginDiv.style.display="block";
+    });
+}
+
+// Load assets from Firebase
+let assets = [];
+function loadAssets(){
+    db.ref("assets").on("value", snapshot => {
+        assets = snapshot.val() ? Object.values(snapshot.val()) : [];
+        displayAssets();
+    });
+}
+
+// Add asset
+function addAsset(){
+    let id = "AST"+Date.now();
+    let asset = {
+        id,
+        name: assetName.value,
+        code: assetCode.value,
+        department: department.value,
+        condition: condition.value,
+        date: handoverDate.value,
+        person: handoverPerson.value,
+        phone: phone.value,
+        district: district.value,
+        entered: enteredBy.value,
+        time: new Date().toLocaleString()
+    };
+    db.ref("assets/"+id).set(asset)
+      .then(()=>{alert("Asset saved!");})
+      .catch(err=>alert("Error: "+err.message));
+}
+
+// Delete asset
+function del(i){
+    let id = assets[i].id;
+    db.ref("assets/"+id).remove().then(()=>{alert("Deleted!")});
+}
+
+// Display assets
+function displayAssets(){
+    assetTable.innerHTML = assetTable.rows[0].outerHTML;
+    let good=0,maint=0,bad=0;
+    assets.forEach((a,i)=>{
+        if(a.condition==="Good") good++;
+        if(a.condition==="Maintenance") maint++;
+        if(a.condition==="Damaged") bad++;
+        let row = assetTable.insertRow();
+        row.innerHTML = `
+            <td>${a.id}</td><td>${a.name}</td><td>${a.code}</td>
+            <td>${a.department}</td><td>${a.condition}</td><td>${a.date}</td>
+            <td>${a.person}</td><td>${a.phone}</td><td>${a.district}</td>
+            <td>${a.entered}</td><td><div id="qr${i}"></div></td>
+            <td><button onclick="del(${i})">Delete</button></td>
+        `;
+        new QRCode(document.getElementById("qr"+i),a.id);
+    });
+    document.getElementById("totalAssets").innerText = assets.length;
+    document.getElementById("goodAssets").innerText = good;
+    document.getElementById("maintAssets").innerText = maint;
+    document.getElementById("badAssets").innerText = bad;
+}
+
+// Search
+function searchAsset(){
+    let input = search.value.toLowerCase();
+    document.querySelectorAll("#assetTable tr").forEach(r=>{
+        r.style.display = r.innerText.toLowerCase().includes(input)?"":"none";
+    });
+}
+
+// Export
+function exportExcel(){
+    let wb = XLSX.utils.table_to_book(assetTable,{sheet:"Assets"});
+    XLSX.writeFile(wb,"Assets.xlsx");
+}
+function exportCSV(){
+    let wb = XLSX.utils.table_to_book(assetTable,{sheet:"Assets"});
+    XLSX.writeFile(wb,"Assets.csv");
+}
+</script>
+</body>
+</html>
